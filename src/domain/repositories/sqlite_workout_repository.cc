@@ -4,6 +4,8 @@
 
 #include <boost/json.hpp>
 #include <boost/json/serializer.hpp>
+#include <filesystem>
+#include <fstream>
 namespace json = boost::json;
 #include <ranges>
 namespace gymbot::infra {
@@ -22,61 +24,9 @@ class SqliteWorkoutRepository::PImpl {
       : connection_(make_sqlite_connection(db_path)) {
     create_tables();
   }
-  int64_t SaveWorkout(const domain::Workout& workout) {
-    auto tx_stmt = make_stmt(connection_, "BEGIN TRANSACTION");
-    sqlite3_step(tx_stmt.get());
-    try {
-      // 1. Сохраняем основную тренировку
-      auto workout_stmt = make_stmt(connection_,
-                                    "INSERT INTO workouts (user_id, "
-                                    "muscle_group, description, timestamp_ms) "
-                                    "VALUES (?, ?, ?, ?)");
+  int64_t SaveWorkout(const domain::Workout& workout) {}
 
-      sqlite3_bind_int64(workout_stmt.get(), 1, workout.user_id_);
-      sqlite3_bind_text(workout_stmt.get(), 2, workout.muscle_group_.c_str(),
-                        -1, SQLITE_TRANSIENT);
-      sqlite3_bind_text(workout_stmt.get(), 3, workout.description_.c_str(), -1,
-                        SQLITE_TRANSIENT);
-      sqlite3_bind_int64(workout_stmt.get(), 4, workout.timestamp_ms_);
-
-      if (sqlite3_step(workout_stmt.get()) != SQLITE_DONE) {
-        throw std::runtime_error("Workout insertion failed");
-      }
-
-      int64_t workout_id = sqlite3_last_insert_rowid(connection_.get());
-      std::ranges::
-    }
-  }
-
-  std::vector<domain::Workout> GetWorkouts(int64_t user_id) {
-    std::vector<domain::Workout> result;
-
-    auto stmt = make_stmt(
-        connection_,
-        "SELECT id, muscle_group, description, exercises_json, timestamp_ms "
-        "FROM workouts WHERE user_id = ? ORDER BY timestamp_ms DESC");
-
-    sqlite3_bind_int64(stmt.get(), 1, user_id);
-
-    while (sqlite3_step(stmt.get()) == SQLITE_ROW) {
-      int64_t id = sqlite3_column_int64(stmt.get(), 0);
-      const char* group =
-          reinterpret_cast<const char*>(sqlite3_column_text(stmt.get(), 1));
-      const char* desc =
-          reinterpret_cast<const char*>(sqlite3_column_text(stmt.get(), 2));
-
-      domain::Workout workout;
-      workout.id_ = id;
-      workout.user_id_ = user_id;
-      workout.muscle_group_ = group ? std::string(group) : "";
-      workout.description_ = desc ? std::string(desc) : "";
-      // Парсим JSON упражнений если нужно
-      // TODO: добавить десериализацию exercises_json в workout.exercises_
-
-      result.push_back(std::move(workout));
-    }
-    return result;
-  }
+  std::vector<domain::Workout> GetWorkouts(int64_t user_id) {}
 
  private:
   SqliteConnection connection_;
@@ -94,33 +44,25 @@ class SqliteWorkoutRepository::PImpl {
   }
 
   void create_tables() {
-    auto stmt1 = make_stmt(connection_, R"(
-    CREATE TABLE IF NOT EXISTS workouts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      muscle_group TEXT NOT NULL,
-      description TEXT,
-      timestamp_ms INTEGER NOT NULL DEFAULT 0,
-      INDEX idx_workouts_user (user_id),
-      INDEX idx_workouts_time (timestamp_ms)
-    )
-  )");
-    sqlite3_step(stmt1.get());
+    auto schema_path = get_schema_path();
+    std::ifstream schema_file(schema_path);
 
-    auto stmt2 = make_stmt(connection_, R"(
-    CREATE TABLE IF NOT EXISTS workout_exercises (
-      workout_id INTEGER NOT NULL,
-      exercise_index INTEGER NOT NULL,
-      name TEXT NOT NULL,
-      sets INTEGER NOT NULL,
-      reps INTEGER NOT NULL,
-      type INTEGER NOT NULL,
-      weight INTEGER NOT NULL,
-      PRIMARY KEY (workout_id, exercise_index),
-      FOREIGN KEY(workout_id) REFERENCES workouts(id) ON DELETE CASCADE
-    )
-  )");
+    if (!schema_file.is_open()) {
+      throw std::runtime_error("Schema file not found " + schema_path.string());
+    }
+
+    std::string schema_sql((std::istreambuf_iterator<char>(schema_file)),
+                           std::istreambuf_iterator<char>());
+    char* err = nullptr;
+    if (sqlite3_exec(connection_.get(), schema_sql.c_str(), nullptr, nullptr,
+                     &err) != SQLITE_OK) {
+      std::string error = err ? err : "unknown";
+      sqlite3_free(err);
+      throw std::runtime_error("Schema init failed: " + error);
+    }
   }
+
+  std::filesystem::path get_schema_path() { return SCHEMA_PATH; }
 };
 
 SqliteWorkoutRepository::SqliteWorkoutRepository(const std::string& db_path)

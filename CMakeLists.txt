@@ -43,6 +43,15 @@ target_include_directories(GymBot
 target_link_libraries(GymBot sqlite3 TgBot::TgBot Boost::json 
 )
 
+set(PROJECT_SOURCE_DIR "${CMAKE_SOURCE_DIR}")
+
+target_compile_definitions(GymBot PRIVATE 
+  PROJECT_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+  SCHEMA_PATH="${PROJECT_SOURCE_DIR}/resources/schema.sql")
+
+target_compile_definitions(GymBotTests PRIVATE 
+  PROJECT_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+  SCHEMA_PATH="${PROJECT_SOURCE_DIR}/resources/schema.sql")
 
 if(CMAKE_BUILD_TYPE STREQUAL "Coverage")
   target_compile_options(GymBotTests PRIVATE 
