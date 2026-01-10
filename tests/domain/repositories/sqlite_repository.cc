@@ -43,14 +43,13 @@ TEST_F(SqliteWorkoutRepoTest, SaveWorkout_WithExercises_CreatesAllRecords) {
 
   auto workout_id = repo->SaveWorkout(workout);
 
-  // Проверяем что все упражнения сохранились
   auto all_workouts = repo->GetWorkouts(123);
   ASSERT_EQ(all_workouts.size(), 1);
 
   const auto& saved = all_workouts[0];
   EXPECT_EQ(saved.exercises_.size(), 3);
   EXPECT_EQ(saved.exercises_[0].name_, "Bench Press");
-  EXPECT_EQ(saved.exercises_[0].sets, 4);
+  EXPECT_EQ(saved.exercises_[0].sets_, 4);
   EXPECT_EQ(saved.exercises_[0].weight_, 80);
 }
 

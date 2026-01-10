@@ -17,8 +17,8 @@ TEST(WorkoutTest, FullConstructor) {
   EXPECT_EQ(w.muscle_group_, "chest");
   EXPECT_EQ(w.exercises_.size(), 2);
   EXPECT_EQ(w.exercises_[0].name_, "Жим лежа");
-  EXPECT_EQ(w.exercises_[0].sets, 4);
-  EXPECT_EQ(w.exercises_[0].reps, 8);
+  EXPECT_EQ(w.exercises_[0].sets_, 4);
+  EXPECT_EQ(w.exercises_[0].reps_, 8);
   EXPECT_EQ(w.exercises_[0].weight_, 80);
   EXPECT_GT(w.timestamp_ms_, 0);
 }

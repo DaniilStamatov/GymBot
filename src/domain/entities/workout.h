@@ -9,8 +9,8 @@ enum ExerciseType { kStrengthWeighed = 0, kBodyWeight = 1, kCardio = 2 };
 
 struct Exercise {
   std::string name_;
-  uint32_t sets = 0;
-  uint32_t reps = 0;
+  uint32_t sets_ = 0;
+  uint32_t reps_ = 0;
   ExerciseType type_ = kStrengthWeighed;
   uint32_t weight_;
 };
