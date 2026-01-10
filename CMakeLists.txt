@@ -1,11 +1,12 @@
 cmake_minimum_required(VERSION 3.20)
 project(GymBot CXX)
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 
 find_package(GTest REQUIRED)
 enable_testing()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+find_package(Boost 1.83 REQUIRED COMPONENTS json)
 
 file(GLOB_RECURSE SOURCES  
   tests/domain/entities/*.cc
@@ -20,6 +21,7 @@ target_link_libraries(GymBotTests
     GTest::gtest_main 
     GTest::gmock
     sqlite3
+    Boost::json 
 )
 
 target_include_directories(GymBotTests 
@@ -38,7 +40,8 @@ target_include_directories(GymBot
     PRIVATE 
     ${CMAKE_SOURCE_DIR}/src 
 )
-target_link_libraries(GymBot sqlite3 TgBot::TgBot)
+target_link_libraries(GymBot sqlite3 TgBot::TgBot Boost::json 
+)
 
 
 if(CMAKE_BUILD_TYPE STREQUAL "Coverage")

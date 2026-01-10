@@ -6,7 +6,7 @@
 
 int main() {
   gymbot::service::WorkoutService service(
-      std::make_unique<gymbot::infra::SqliteWorkoutRepository>());
+      std::make_unique<gymbot::infra::SqliteWorkoutRepository>("gymbot.db"));
 
   // 2. Telegram Bot
   TgBot::Bot bot("8572912737:AAFMR9sbdLQx67H9vB5iiRG3Z8fspUre3kY");

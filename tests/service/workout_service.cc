@@ -29,7 +29,7 @@ TEST(WorkoutServiceTest, RecordsWorkoutThroughRepository) {
 
 TEST(WorkoutServiceTest, GetWorkouts_FiltersByUserId) {
   gymbot::service::WorkoutService service(
-      std::make_unique<gymbot::infra::SqliteWorkoutRepository>());
+      std::make_unique<gymbot::infra::SqliteWorkoutRepository>(":memory:"));
   service.SaveWorkout({0, "chest"});
   service.SaveWorkout({1, "legs"});
   service.SaveWorkout({0, "back"});

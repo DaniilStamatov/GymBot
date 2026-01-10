@@ -9,7 +9,7 @@ namespace gymbot::infra {
 
 class SqliteWorkoutRepository : public domain::IWorkoutRepository {
  public:
-  SqliteWorkoutRepository();
+  SqliteWorkoutRepository(const std::string& db_path = ":memory");
   ~SqliteWorkoutRepository();
   int64_t SaveWorkout(const domain::Workout& workout) override;
 

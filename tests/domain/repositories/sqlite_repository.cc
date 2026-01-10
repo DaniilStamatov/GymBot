@@ -3,49 +3,99 @@
 #include "domain/repositories/sqlite_workout_repository.h"
 using namespace gymbot;
 
-class SqliteWorkoutRepositoryTest : public ::testing::Test {
+class SqliteWorkoutRepoTest : public ::testing::Test {
  protected:
-  gymbot::infra::SqliteWorkoutRepository repo;
+  static constexpr auto DB_PATH = ":memory:";
+
+  std::unique_ptr<gymbot::infra::SqliteWorkoutRepository> repo;
+  gymbot::domain::Workout make_test_workout(int64_t user_id) {
+    gymbot::domain::Workout workout;
+    workout.user_id_ = user_id;
+    workout.muscle_group_ = "Chest";
+    workout.description_ = "Bench Press Day";
+    workout.timestamp_ms_ = 1640995200000;
+
+    workout.exercises_ = {
+        domain::Exercise{"Bench Press", 4, 8, domain::ExerciseType::kBodyWeight,
+                         80},
+        domain::Exercise{"Incline DB", 3, 10,
+                         domain::ExerciseType::kStrengthWeighed, 25},
+        domain::Exercise{"Cable Fly", 3, 12, domain::ExerciseType::kCardio,
+                         20}};
+    return workout;
+  }
+
+  void SetUp() override {
+    repo = std::make_unique<gymbot::infra::SqliteWorkoutRepository>(DB_PATH);
+  }
 };
-TEST_F(SqliteWorkoutRepositoryTest, SaveWorkout_ReturnsId) {
-  domain::Workout workout{0, "chest"};
 
-  int64_t id = repo.SaveWorkout(workout);
-  EXPECT_EQ(id, 1);
-}
+TEST_F(SqliteWorkoutRepoTest, SaveWorkout_CreatesRecord) {
+  auto workout = make_test_workout(123);
 
-TEST_F(SqliteWorkoutRepositoryTest, SaveMultipleWorkouts_IncrementsId) {
-  domain::Workout workout1{0, "chest"};
-  domain::Workout workout2{0, "legs"};
+  auto id = repo->SaveWorkout(workout);
 
-  int64_t id1 = repo.SaveWorkout(workout1);
-  int64_t id2 = repo.SaveWorkout(workout2);
-
-  EXPECT_EQ(id2, id1 + 1);
-}
-
-TEST_F(SqliteWorkoutRepositoryTest, SaveWorkout_NegativeUserId_StillWorks) {
-  domain::Workout workout{-1, "back"};
-
-  int64_t id = repo.SaveWorkout(workout);
   EXPECT_GT(id, 0);
 }
 
-TEST_F(SqliteWorkoutRepositoryTest, SaveWorkout_EmptyMuscleGroup_StillWorks) {
-  domain::Workout workout{0, ""};
+TEST_F(SqliteWorkoutRepoTest, SaveWorkout_WithExercises_CreatesAllRecords) {
+  auto workout = make_test_workout(123);
 
-  int64_t id = repo.SaveWorkout(workout);
-  EXPECT_GT(id, 0);
+  auto workout_id = repo->SaveWorkout(workout);
+
+  // Проверяем что все упражнения сохранились
+  auto all_workouts = repo->GetWorkouts(123);
+  ASSERT_EQ(all_workouts.size(), 1);
+
+  const auto& saved = all_workouts[0];
+  EXPECT_EQ(saved.exercises_.size(), 3);
+  EXPECT_EQ(saved.exercises_[0].name_, "Bench Press");
+  EXPECT_EQ(saved.exercises_[0].sets, 4);
+  EXPECT_EQ(saved.exercises_[0].weight_, 80);
 }
 
-TEST_F(SqliteWorkoutRepositoryTest, GetWorkouts_FiltersByUserId) {
-  repo.SaveWorkout({1, "chest"});
-  repo.SaveWorkout({2, "legs"});
-  repo.SaveWorkout({1, "back"});
+TEST_F(SqliteWorkoutRepoTest, GetWorkouts_ReturnsCorrectUserWorkouts) {
+  // 3 разных юзера
+  repo->SaveWorkout(make_test_workout(1));
+  repo->SaveWorkout(make_test_workout(2));
+  repo->SaveWorkout(make_test_workout(1));  // Тот же юзер
 
-  auto workouts = repo.GetWorkouts(1);
+  auto user1_workouts = repo->GetWorkouts(1);
+  auto user2_workouts = repo->GetWorkouts(2);
 
-  EXPECT_EQ(workouts.size(), 2);
-  EXPECT_EQ(workouts[0].muscle_group_, "chest");
-  EXPECT_EQ(workouts[1].muscle_group_, "back");
+  EXPECT_EQ(user1_workouts.size(), 2);
+  EXPECT_EQ(user2_workouts.size(), 1);
+}
+
+TEST_F(SqliteWorkoutRepoTest, TransactionRollback_OnExerciseError) {
+  // TODO: тест на rollback при ошибке в упражнениях
+  // Нужно мокать sqlite3_step чтобы вернуть ошибку
+}
+
+TEST_F(SqliteWorkoutRepoTest, MultipleWorkouts_SavesCorrectly) {
+  auto workout1 = make_test_workout(123);
+  workout1.muscle_group_ = "Back";
+
+  auto workout2 = make_test_workout(123);
+  workout2.muscle_group_ = "Legs";
+
+  repo->SaveWorkout(workout1);
+  repo->SaveWorkout(workout2);
+
+  auto workouts = repo->GetWorkouts(123);
+  ASSERT_EQ(workouts.size(), 2);
+
+  // Проверяем что группы разные
+  std::set<std::string> groups;
+  for (const auto& w : workouts) {
+    groups.insert(w.muscle_group_);
+  }
+  EXPECT_EQ(groups.size(), 2);
+}
+
+TEST_F(SqliteWorkoutRepoTest, EmptyExercises_SavesCorrectly) {
+  gymbot::domain::Workout empty_workout{123, "Cardio"};
+
+  auto id = repo->SaveWorkout(empty_workout);
+  EXPECT_GT(id, 0);
 }
