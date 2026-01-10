@@ -28,6 +28,27 @@ target_include_directories(GymBotTests
     ${CMAKE_SOURCE_DIR}/tests  
 )
 
+
+file(GLOB_RECURSE SOURCES  
+  src/domain/repositories/*.cc
+  src/service/*.cc)
+find_package(TgBot REQUIRED)
+add_executable(GymBot ${SOURCES} src/main.cc)
+target_include_directories(GymBot 
+    PRIVATE 
+    ${CMAKE_SOURCE_DIR}/src 
+)
+target_link_libraries(GymBot sqlite3 TgBot::TgBot)
+
+
+if(CMAKE_BUILD_TYPE STREQUAL "Coverage")
+  target_compile_options(GymBotTests PRIVATE 
+    -g -O0 -fprofile-arcs -ftest-coverage)
+  target_link_options(GymBotTests PRIVATE 
+    -fprofile-arcs -ftest-coverage)
+endif()
+
 file(GLOB_RECURSE ALL_SOURCE_FILES *.cc *.h)
 add_custom_target(format COMMAND clang-format -i ${ALL_SOURCE_FILES})
 add_test(NAME GymBotTests COMMAND GymBotTests)
+

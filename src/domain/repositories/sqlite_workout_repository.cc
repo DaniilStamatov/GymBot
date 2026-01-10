@@ -48,7 +48,7 @@ class SqliteWorkoutRepository::PImpl {
 
   SqliteConnection make_sqlite_connection() {
     sqlite3* raw = nullptr;
-    sqlite3_open(":memory:", &raw);
+    sqlite3_open("gymbot.db", &raw);
     return SqliteConnection(raw);
   }
 
