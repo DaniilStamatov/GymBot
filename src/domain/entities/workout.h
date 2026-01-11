@@ -3,16 +3,16 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+
 namespace gymbot {
 namespace domain {
-enum ExerciseType { kStrengthWeighed = 0, kBodyWeight = 1, kCardio = 2 };
 
-struct Exercise {
-  std::string name_;
-  uint32_t sets_ = 0;
-  uint32_t reps_ = 0;
-  ExerciseType type_ = kStrengthWeighed;
-  uint32_t weight_;
+struct WorkoutExercise {
+  int64_t exercise_id_;
+  std::string exercise_name_;
+  int sets_;
+  int reps_;
+  int weight_;
 };
 
 struct Workout {
@@ -20,13 +20,13 @@ struct Workout {
   int64_t user_id_ = 0;
   std::string muscle_group_;
   std::string description_;
-  std::vector<Exercise> exercises_;
+  std::vector<WorkoutExercise> exercises_;
   int64_t timestamp_ms_ = 0;
 
   Workout() : timestamp_ms_(now_ms()) {}
 
   Workout(int64_t user_id, std::string_view muscle_group,
-          std::vector<Exercise> exercises, std::string_view description)
+          std::vector<WorkoutExercise> exercises, std::string_view description)
       : user_id_(user_id),
         muscle_group_(muscle_group),
         description_(description),
@@ -39,12 +39,12 @@ struct Workout {
         timestamp_ms_(now_ms()) {}
 
   Workout(int64_t user_id, std::string_view muscle_group,
-          std::vector<Exercise> exercises)
+          std::vector<WorkoutExercise> exercises)
       : user_id_(user_id),
         muscle_group_(muscle_group),
         exercises_(std::move(exercises)),
         timestamp_ms_(now_ms()) {}
-
+  void AddExercise(const WorkoutExercise& ex) { exercises_.push_back(ex); }
   static int64_t now_ms() {
     return std::chrono::duration_cast<std::chrono::milliseconds>(
                std::chrono::system_clock::now().time_since_epoch())
